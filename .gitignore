@@ -1,0 +1,8 @@
+# VS Code directory
+.vscode
+# All .env files
+*.env
+# DB storage directory
+/storage
+# Config directory
+/config
