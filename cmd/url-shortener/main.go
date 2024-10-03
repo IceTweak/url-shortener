@@ -5,8 +5,12 @@ import (
 	"os"
 
 	"github.com/IceTweak/url-shortener/internal/config"
+	mwLogger "github.com/IceTweak/url-shortener/internal/http-server/middleware/logger"
 	"github.com/IceTweak/url-shortener/internal/lib/logger/sl"
+	"github.com/IceTweak/url-shortener/internal/lib/logger/sl/handlers/slogpretty"
 	"github.com/IceTweak/url-shortener/internal/storage/sqlite"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 const (
@@ -31,7 +35,16 @@ func main() {
 
 	_ = storage
 
-	// TODO: init router - chi, chi render
+	router := chi.NewRouter()
+
+	// middlewares
+	router.Use(middleware.RequestID)
+	// chi's logger middleware
+	router.Use(middleware.Logger)
+	// own implemented logger middleware
+	router.Use(mwLogger.New(log))
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.URLFormat)
 
 	// TODO: run server
 }
@@ -41,12 +54,27 @@ func setupLogger(env string) *slog.Logger {
 
 	switch env {
 	case envLocal:
-		log = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		log = setupPrettySlog()
 	case envDev:
 		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	case envProd:
 		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// If env config is invalid, set prod settings by default due to security
+	default:
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	}
 
 	return log
+}
+
+func setupPrettySlog() *slog.Logger {
+	opts := slogpretty.PrettyHandlerOptions{
+		SlogOpts: &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	}
+
+	handler := opts.NewPrettyHandler(os.Stdout)
+
+	return slog.New(handler)
 }
