@@ -21,7 +21,7 @@ func New(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// It's better to use db migrations instead this statemsnt (e.g. goose)
+	// TODO: It's better to use db migrations instead this statemsnt (e.g. goose)
 	stmt, err := db.Prepare(`
 	CREATE TABLE IF NOT EXISTS url(
 		id INTEGER PRIMARY KEY,
