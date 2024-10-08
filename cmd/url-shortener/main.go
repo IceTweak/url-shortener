@@ -2,9 +2,11 @@ package main
 
 import (
 	"log/slog"
+	"net/http"
 	"os"
 
 	"github.com/IceTweak/url-shortener/internal/config"
+	"github.com/IceTweak/url-shortener/internal/http-server/handlers/url/save"
 	mwLogger "github.com/IceTweak/url-shortener/internal/http-server/middleware/logger"
 	"github.com/IceTweak/url-shortener/internal/lib/logger/sl"
 	"github.com/IceTweak/url-shortener/internal/lib/logger/sl/handlers/slogpretty"
@@ -33,8 +35,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	_ = storage
-
 	router := chi.NewRouter()
 
 	// middlewares
@@ -46,7 +46,26 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	// TODO: run server
+	// handlers
+	router.Post("/url", save.New(log, storage))
+
+	log.Info("starting server", slog.String("address", cfg.Address))
+
+	// init server
+	srv := &http.Server{
+		Addr:         cfg.Address,
+		Handler:      router,
+		ReadTimeout:  cfg.HTTPServer.Timeout,
+		WriteTimeout: cfg.HTTPServer.Timeout,
+		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
+	}
+
+	// start server
+	if err := srv.ListenAndServe(); err != nil {
+		log.Error("failed to start server")
+	}
+
+	log.Error("server stopped")
 }
 
 func setupLogger(env string) *slog.Logger {

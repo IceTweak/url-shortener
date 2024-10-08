@@ -1,11 +1,14 @@
 package save
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
 	resp "github.com/IceTweak/url-shortener/internal/lib/api/response"
 	"github.com/IceTweak/url-shortener/internal/lib/logger/sl"
+	"github.com/IceTweak/url-shortener/internal/lib/random"
+	"github.com/IceTweak/url-shortener/internal/storage"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
@@ -65,8 +68,31 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 
 		alias := req.Alias
 		if alias == "" {
-			// TODO: implement this function in different package
-			// alias = random.NewRandomString(aliasLength)
+			alias = random.NewRandomString(aliasLength)
 		}
+
+		id, err := urlSaver.SaveURL(req.URL, alias)
+		// TODO: resolve equal alias issue
+		if errors.Is(err, storage.ErrURLExists) {
+			log.Info("url already exists", slog.String("url", req.URL))
+
+			render.JSON(w, r, resp.Error("url already exists"))
+
+			return
+		}
+		if err != nil {
+			log.Error("failed to add url", sl.Err(err))
+
+			render.JSON(w, r, resp.Error("failed to add url"))
+
+			return
+		}
+
+		log.Info("url added successfully", slog.Int64("id", id))
+
+		render.JSON(w, r, Response{
+			Response: resp.OK(),
+			Alias:    alias,
+		})
 	}
 }
