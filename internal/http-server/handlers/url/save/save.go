@@ -28,6 +28,8 @@ type Response struct {
 // TODO: move to config
 const aliasLength = 4
 
+// URLSaver is an interface for save url to storage
+//
 //go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=URLSaver
 type URLSaver interface {
 	// Defined in storage.sqlite.SaveURL
